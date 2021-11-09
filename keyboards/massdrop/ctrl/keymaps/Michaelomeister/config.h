@@ -2,7 +2,8 @@
 
 #define UNICODE_SELECTED_MODES UC_WINC
 
-#define TAPPING_TERM 200
+#define TAPPING_TERM 100
+#define TAPPING_TERM_PER_KEY
 
 #define FORCE_NKRO                  // NKRO by default requires to be turned on, this forces it on during keyboard startup regardless of EEPROM setting. NKRO can still be turned off but will be turned on again if the keyboard reboots.
 

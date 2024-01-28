@@ -4,6 +4,10 @@ static uint16_t idle_timer;             // Idle LED timeout timer
 static uint8_t idle_second_counter;     // Idle LED seconds counter, counts seconds not milliseconds
 static uint8_t key_event_counter;       // This counter is used to check if any keys are being held
 
+bool spam_enter;
+uint16_t spam_timer = false;
+uint16_t spam_interval = 3000; // (1000ms == 1s)
+
 const macro_t *action_get_macro(keyrecord_t *record, uint8_t id, uint8_t opt)
 {
   switch(id) {
@@ -32,6 +36,8 @@ uint16_t get_tapping_term(uint16_t keycode, keyrecord_t *record) {
   switch (keycode) {
     case TD(TD_BSLS_F13):
       return TAPPING_TERM + 50;
+    case LT (2, KC_CAPS):
+      return 200;
     default:
       return TAPPING_TERM;
   }
@@ -44,14 +50,14 @@ const uint16_t PROGMEM keymaps[][MATRIX_ROWS][MATRIX_COLS] = {
         KC_TAB,  KC_Q,    KC_W,    KC_E,    KC_R,    KC_T,    KC_Y,    KC_U,    KC_I,    KC_O,    KC_P,    KC_LBRC, KC_RBRC, TD(TD_BSLS_F13),   KC_DEL,  KC_END,  KC_PGDN, \
         LT (2, KC_CAPS), KC_A,    KC_S,    KC_D,    KC_F,    KC_G,    KC_H,    KC_J,    KC_K,    KC_L,    KC_SCLN, KC_QUOT, KC_ENT, \
         KC_LSFT, KC_Z,    KC_X,    KC_C,    KC_V,    KC_B,    KC_N,    KC_M,    KC_COMM, KC_DOT,  KC_SLSH, KC_RSFT,                              KC_UP, \
-        KC_LCTL, KC_LGUI, KC_LALT,                   KC_SPC,                             KC_RALT, KC_APP,   MO(1),  KC_RCTL,            KC_LEFT, KC_DOWN, KC_RGHT \
+        KC_LCTL, KC_LALT, KC_LGUI,                   KC_SPC,                             KC_RALT, KC_APP,   MO(1),  KC_RCTL,            KC_LEFT, KC_DOWN, KC_RGHT \
     ),
     [1] = LAYOUT(
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,            _______, _______, KC_MUTE, \
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,   KC_MPLY, KC_MSTP, KC_VOLU, \
         _______, RGB_SPD, RGB_VAI, RGB_SPI, RGB_HUI, RGB_SAI, _______, _______, _______, _______, _______, _______, _______, _______,   KC_MPRV, KC_MNXT, KC_VOLD, \
         _______, RGB_RMOD,RGB_VAD, RGB_MOD, RGB_HUD, RGB_SAD, _______, _______, _______, _______, _______, _______, _______, \
-        _______, RGB_TOG, U_T_AUTO, U_T_AGCR, DBG_TOG, MD_BOOT, NK_TOGG, _______, _______, _______, _______, _______,                              _______, \
+        _______, RGB_TOG, U_T_AUTO, U_T_AGCR, DBG_TOG, MD_BOOT, NK_TOGG, _______, _______, _______, KC_GFN_AFK, _______,                              _______, \
         _______, _______, _______,                   _______,                            _______, _______, _______, _______,            _______, _______, _______ \
     ),
     [2] = LAYOUT(
@@ -74,7 +80,7 @@ const uint8_t PROGMEM ledmap[][DRIVER_LED_TOTAL][3] = {
         _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______, _______,   GREEN, RED, SPRING, \
         _______, CYAN, GOLD, CYAN, MAGENT, AZURE, _______, _______, _______, _______, _______, _______, _______, _______,   BLUE, BLUE, SPRING, \
         _______, CORAL,GOLD, CORAL, MAGENT, AZURE, _______, _______, _______, _______, _______, _______, _______, \
-        _______, CHART,  _______,  _______,  _______, RED, TURQ, _______, _______, _______, _______, _______,                              _______, \
+        _______, CHART,  _______,  _______,  _______, RED, TURQ, _______, _______, _______, GREEN, _______,                              _______, \
         _______, _______, _______,                   _______,                            _______, _______, _______, _______,            _______, _______, _______ \
     },
     [2] = {
@@ -123,7 +129,6 @@ void matrix_scan_user(void) {
             idle_second_counter++;
             idle_timer = timer_read();
         }
-
         if (idle_second_counter >= rgb_time_out_seconds) {
             rgb_time_out_saved_flag = rgb_matrix_get_flags();
             rgb_matrix_set_flags(LED_FLAG_NONE);
@@ -131,6 +136,10 @@ void matrix_scan_user(void) {
             rgb_enabled_flag = false;
             idle_second_counter = 0;
         }
+    }
+    if (spam_enter && timer_elapsed(spam_timer) >= spam_interval) {
+        spam_timer = timer_read();
+        SEND_STRING(SS_TAP(X_P));
     }
 };
 
@@ -206,6 +215,12 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
                     }
                     break;
                 }
+            }
+            return false;
+        case KC_GFN_AFK: // Toggle's if we hit "ENTER" or "BACKSPACE" to input macros
+            if (record->event.pressed) {
+                spam_enter ^= 1;
+                spam_timer = timer_read();
             }
             return false;
         default:

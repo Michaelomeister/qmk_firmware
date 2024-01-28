@@ -62,3 +62,7 @@ enum {
     LONG_DASH = 0,
     MID_DASH,
 };
+
+enum custom_keycodes {
+    KC_GFN_AFK,
+};
